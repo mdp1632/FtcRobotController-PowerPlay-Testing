@@ -32,9 +32,10 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.DigitalChannel;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 /**
@@ -58,20 +59,19 @@ import com.qualcomm.robotcore.util.ElapsedTime;
  * override the ParentOpMode runOpMode() method.
  **/
 
-@TeleOp(name="Parent Opmode Test", group="Linear Opmode")
+@TeleOp(name="Parent Opmode Example0", group="Linear Opmode")
 @Disabled
-public class ParentOpModeTesting extends LinearOpMode {
+public class ParentOpModeTesting0 extends LinearOpMode {
 
     // Declare OpMode members, hardware variables
     public ElapsedTime runtime = new ElapsedTime();
 
     private DcMotor rightFront = null;
     private DcMotor rightBack = null;
-    private DcMotor leftFront = null;
-    private DcMotor leftBack = null;
+    private CRServo intakeServo = null;
+    private Servo shooterFlipper = null;
 
-    public DcMotorSimple liftMotor = null;
-
+    private DcMotor liftMotor = null;
     private DigitalChannel liftLimitSw = null;
 
     //private Lift liftSubsystem = new Lift(lift);
@@ -79,16 +79,14 @@ public class ParentOpModeTesting extends LinearOpMode {
     //Other Global Variables
     //put global variables here...
     //
-    int liftMax = 6800;
-    int liftMin = 100;
+    int liftMax = 1000;
+    int liftMin = 20;
     int lift_encoder_offset = 0;
-    int lift_destination = 0; // May or may not use
-    boolean goToPositionEnabled = false;
 
-    int liftpos0 = 1000;
-    int liftpos1 = 3000;
-    int liftpos2 = 5000;
-    int liftpos3 = 6500;
+    int liftpos0 = 100;
+    int liftpos1 = 200;
+    int liftpos2 = 300;
+    int liftpos3 = 400;
 
 
 
@@ -97,15 +95,22 @@ public class ParentOpModeTesting extends LinearOpMode {
         // to 'get' must correspond to the names assigned during the robot configuration
         // step (using the FTC Driver Station app or Driver Hub).
         rightFront = hardwareMap.get(DcMotor.class, "rf_drive");
-        leftFront = hardwareMap.get(DcMotor.class, "lf_drive");
-        leftBack = hardwareMap.get(DcMotor.class, "lb_drive");
-        rightBack = hardwareMap.get(DcMotor.class, "rb_drive");
+        intakeServo = hardwareMap.get(CRServo.class, "intake_servo");
+        shooterFlipper = hardwareMap.get(Servo.class,"shooterFlipper_servo");
 
-        liftMotor = hardwareMap.get(DcMotorSimple.class, "lift_motor");
+        liftMotor = hardwareMap.get(DcMotor.class,"lift_motor");
+
         liftLimitSw = hardwareMap.get(DigitalChannel.class,"lift_limit_switch");
 
-        //Set Directions
-        liftMotor.setDirection(DcMotor.Direction.REVERSE);
+        //Set motor run mode (if using SPARK Mini motor controllers)
+        liftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        //Set Motor  and servo Directions
+        rightFront.setDirection(DcMotor.Direction.REVERSE);
+
+
+        //Set range for special Servos
+        //wobbleLift.scaleRange(0.15,.85); //Savox PWM range is between 0.8 and 2.2 ms. REV Hub puts out 0.5-2.5ms.
 
         //Set brake or coast modes.
         rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE); //BRAKE or FLOAT (Coast)
@@ -143,7 +148,7 @@ public class ParentOpModeTesting extends LinearOpMode {
 
 
             //include emergency stop check in all runOpMode() functions/methods
-            //implementation depends on which E-stop function will be used (boolean/void)
+                //implementation depends on which E-stop function will be used (boolean/void)
             if(emergencyStopped()){
                 //terminateOpModeNow();   // New method in 2022. (Immediately, Cleanly exits OpMode)
                 break;
@@ -184,29 +189,24 @@ public class ParentOpModeTesting extends LinearOpMode {
         return gamepad1.a;
     }
     public boolean pos1Button(){
-        return gamepad1.x;
-    }
-    public boolean pos2Button(){
         return gamepad1.b;
     }
-    public boolean pos3Button(){
+    public boolean pos2Button(){
         return gamepad1.y;
+    }
+    public boolean pos3Button(){
+        return gamepad1.x;
     }
 
     public boolean liftDownButton(){return gamepad1.left_bumper;}
     public boolean liftUpButton(){return gamepad1.right_bumper;}
 
     public double liftTriggers(){
-        if(gamepad1.left_trigger > 0.2){
-            return -gamepad1.left_trigger;
+        if(gamepad1.left_trigger > 0){
+            return gamepad1.left_trigger;
         }
         else{
-            if(gamepad1.right_trigger > 0.2){
-                return gamepad1.right_trigger;
-            }
-            else{
-                return 0;
-            }
+            return gamepad1.right_trigger;
         }
     }
 
@@ -222,9 +222,9 @@ public class ParentOpModeTesting extends LinearOpMode {
 
     /****************************/
     // Emergency Stop Functions
-    // Only one is needed.
-    // If using boolean version, call to function will need to be
-    // placed in conditional (if/then) statement with code to break from loop or terminate opmode.
+        // Only one is needed.
+        // If using boolean version, call to function will need to be
+        // placed in conditional (if/then) statement with code to break from loop or terminate opmode.
 
     public boolean emergencyStopped(){
         if (emergencyButtons()) {
@@ -316,17 +316,9 @@ public class ParentOpModeTesting extends LinearOpMode {
         return limitSwitch;
     }
 
-
-
     public void liftManualAnalogControl(double liftSpeed){
         double upSpeedScaler = 1;
         double downSpeedScaler = 0.5;
-
-        telemetry.addData("Lift Speed: ",liftSpeed);
-
-        if(liftSpeed != 0){
-            goToPositionEnabled =  false;
-        }
 
         if(liftSpeed > 0){
             if(getLiftPosition()<liftMax){
@@ -336,7 +328,7 @@ public class ParentOpModeTesting extends LinearOpMode {
         }
         else{
             if(getLiftPosition()>liftMin){
-                double liftDownSpeed = -liftSpeed*downSpeedScaler;
+                double liftDownSpeed = liftSpeed*downSpeedScaler;
                 liftMotor.setPower(liftDownSpeed);
             }
         }
@@ -360,7 +352,7 @@ public class ParentOpModeTesting extends LinearOpMode {
 
     }
 
-    public void goToButtonPositionWhileHeld(){
+    public void goToButtonPosition(){
         if(pos0Button()){
             goToPosition(liftpos0);
         }
@@ -376,47 +368,18 @@ public class ParentOpModeTesting extends LinearOpMode {
                     if (pos3Button()) {
                         goToPosition(liftpos3);
                     }
-                    else{
-                        stopLift();
-                    }
                 }
             }
         }
     }
 
-
-    public void set_destination_WithButtons(){
-        if(pos0Button()){
-            lift_destination = liftpos0;
-        }
-        if(pos1Button()){
-            lift_destination = liftpos1;
-        }
-        if(pos2Button()){
-            lift_destination = liftpos2;
-        }
-        if(pos3Button()){
-            lift_destination = liftpos3;
-        }
-
-    }
-
-    /*
-    // Probably need to incorporate a loop here.
-    // Does not send stop command unless destination has already been reached when function is called.
-    // (IE: function needs to be called repeatedly until destination is reached otherwise, it will overshoot)
-    // Could make destination a global variable in opmode, and call goToPosition(destination) every cycle.
-    // This would mean buttons would change destination, rather than calling a different goToPosition.
-    // Still, it would interrupt manual controls unless manual controls incremented destination position,
-    // rather than setting motor power.
-    // Can probably be done with goToPositionEnabled boolean global variable.
-    // Must be set to false in all manual control functions.
     public void goToPosition(int destination){
-        int liftDeadZone_Upper = 300;
-        int liftDeadZone_Lower = 200;
+        int liftDeadZone_Upper = 50;
+        int liftDeadZone_Lower = 25;
         double liftUpSpeed = 1;
-        double liftDownSpeed = -0.5;
+        double liftDownSpeed = .5;
 
+        // Optional, but not a bad idea:
         // Catch any attempts to pass limits
         if((destination > liftMax) || (destination < liftMin)){
             return;
@@ -428,66 +391,15 @@ public class ParentOpModeTesting extends LinearOpMode {
             liftMotor.setPower(liftUpSpeed);
             telemetry.addData("Lift: Going to position: ",destination);
         }
-        else{
-            if(getLiftPosition() > destination + liftDeadZone_Upper){
-                //go down
-                liftMotor.setPower(liftDownSpeed);
-                telemetry.addData("Lift: Going to position  ",destination);
-            }
-            else {
-                stopLift();
-                telemetry.addData("Lift: ", "Stopped");
-            }
+        if(getLiftPosition() > destination + liftDeadZone_Upper){
+            //go down
+            liftMotor.setPower(liftDownSpeed);
+            telemetry.addData("Lift: Going to position  ",destination);
         }
-
-    }
-    */
-
-    public void goToPosition(int destination){
-        int liftDeadZone_Upper = 300;
-        int liftDeadZone_Lower = 200;
-        double liftUpSpeed = 1;
-        double liftDownSpeed = -0.5;
-        double liftPower = 0;
-
-        // Catch any attempts to pass limits
-        if((destination > liftMax) || (destination < liftMin)){
-            return;
+        else {
+            stopLift();
+            telemetry.addData("Lift: ", "Stopped");
         }
-
-        // Set liftPower variable
-        if(getLiftPosition() < destination - liftDeadZone_Lower){
-            //go up
-            //liftMotor.setPower(liftUpSpeed);
-            goToPositionEnabled = true;
-            liftPower = liftUpSpeed;
-            telemetry.addData("Lift: Going to position: ",destination);
-        }
-        else{
-            if(getLiftPosition() > destination + liftDeadZone_Upper){
-                //go down
-                //liftMotor.setPower(liftDownSpeed);
-                goToPositionEnabled = true;
-                liftPower = liftDownSpeed;
-                telemetry.addData("Lift: Going to position  ",destination);
-            }
-            else{
-                liftPower = 0;
-            //    stopLift();
-                telemetry.addData("Lift: ", "Stopped");
-            }
-        }
-
-        //Drive lift
-        if(goToPositionEnabled){
-            liftMotor.setPower(liftPower);
-
-            if(liftPower == 0){     //Probably not the cleanest way to do this, but it should work...
-                goToPositionEnabled = false;
-            }
-        }
-
-
     }
 
 
