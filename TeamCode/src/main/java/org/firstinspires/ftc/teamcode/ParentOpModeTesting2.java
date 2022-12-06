@@ -82,8 +82,6 @@ public class ParentOpModeTesting2 extends LinearOpMode {
     int liftMax = 6800;
     int liftMin = 50;
     int lift_encoder_offset = 0;
-    int lift_destination = 0; // May or may not use
-    boolean goToPositionEnabled = false;
 
     int liftpos0 = 0;
     int liftpos1 = 3000;
