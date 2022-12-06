@@ -58,7 +58,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
  * override the ParentOpMode runOpMode() method.
  **/
 
-@TeleOp(name="Parent Opmode Test", group="Linear Opmode")
+@TeleOp(name="Parent Opmode Test2", group="Linear Opmode")
 @Disabled
 public class ParentOpModeTesting2 extends LinearOpMode {
 
@@ -305,11 +305,14 @@ public class ParentOpModeTesting2 extends LinearOpMode {
     }
 
     public void liftHomingRoutine(){
-        double homingSpeed = 0.3;
+        double homingSpeed = -0.3;
 
+        // Move lift down slowly until  limit switch is triggered
         while(!liftAtBottom() && opModeIsActive()){
             liftMotor.setPower(homingSpeed);
         }
+
+        setLiftEncoderOffset();
     }
 
 
@@ -322,75 +325,6 @@ public class ParentOpModeTesting2 extends LinearOpMode {
     }
 
 
-
-    public void liftManualAnalogControl(double liftSpeed){
-        double upSpeedScaler = 1;
-        double downSpeedScaler = 0.5;
-
-        telemetry.addData("Lift Speed: ",liftSpeed);
-
-        if(liftSpeed != 0){
-            goToPositionEnabled =  false;
-        }
-
-        if(liftSpeed > 0){
-            if(getLiftPosition()<liftMax){
-                double liftUpSpeed = liftSpeed*upSpeedScaler;
-                liftMotor.setPower(liftUpSpeed);
-            }
-        }
-        else{
-            if(getLiftPosition()>liftMin){
-                double liftDownSpeed = -liftSpeed*downSpeedScaler;
-                liftMotor.setPower(liftDownSpeed);
-            }
-        }
-    }
-
-    public void liftManualNoSpeedControl(){
-        double LIFT_SPEED = 1;
-        // Lift Speed limited by scaling factors in lift AnalogControl function
-
-        if(liftUpButton()){
-            liftManualAnalogControl(LIFT_SPEED);
-        }
-        else{
-            if(liftDownButton()){
-                liftManualAnalogControl((-LIFT_SPEED));
-            }
-            else{
-                stopLift();
-            }
-        }
-
-    }
-
-    public void set_destination_WithButtons(){
-        if(pos0Button()){
-            lift_destination = liftpos0;
-        }
-        if(pos1Button()){
-            lift_destination = liftpos1;
-        }
-        if(pos2Button()){
-            lift_destination = liftpos2;
-        }
-        if(pos3Button()){
-            lift_destination = liftpos3;
-        }
-
-    }
-
-    /*
-    // Probably need to incorporate a loop here.
-    // Does not send stop command unless destination has already been reached when function is called.
-    // (IE: function needs to be called repeatedly until destination is reached otherwise, it will overshoot)
-    // Could make destination a global variable in opmode, and call goToPosition(destination) every cycle.
-    // This would mean buttons would change destination, rather than calling a different goToPosition.
-    // Still, it would interrupt manual controls unless manual controls incremented destination position,
-    // rather than setting motor power.
-    // Can probably be done with goToPositionEnabled boolean global variable.
-    // Must be set to false in all manual control functions.
     public void goToPosition(int destination){
         int liftDeadZone_Upper = 300;
         int liftDeadZone_Lower = 200;
@@ -412,16 +346,21 @@ public class ParentOpModeTesting2 extends LinearOpMode {
             if(getLiftPosition() > destination + liftDeadZone_Upper){
                 //go down
                 liftMotor.setPower(liftDownSpeed);
-                telemetry.addData("Lift: Going to position  ",destination);
+                telemetry.addData("Lift: Going to position: ",destination);
             }
             else {
                 stopLift();
+
+                goToPos0 = false;
+                goToPos1 = false;
+                goToPos2 = false;
+                goToPos3 = false;
+
                 telemetry.addData("Lift: ", "Stopped");
             }
         }
 
     }
-    */
 
     public void goToPosButtonsWithManualCtrl(){
         double liftUpSpeed = .9;
@@ -460,7 +399,7 @@ public class ParentOpModeTesting2 extends LinearOpMode {
 
             liftMotor.setPower(liftUpSpeed);
         }
-        else if(liftDownButton()){
+        else if(liftDownButton() && !liftAtBottom()){
             goToPos0 = false;
             goToPos1 = false;
             goToPos2 = false;
@@ -485,62 +424,6 @@ public class ParentOpModeTesting2 extends LinearOpMode {
                 stopLift();
             }
         }
-
-
-
     }
-
-
-
-
-
-    public void goToPosition(int destination){
-        int liftDeadZone_Upper = 300;
-        int liftDeadZone_Lower = 200;
-        double liftUpSpeed = 1;
-        double liftDownSpeed = -0.5;
-        double liftPower = 0;
-
-        // Catch any attempts to pass limits
-        if((destination > liftMax) || (destination < liftMin)){
-            return;
-        }
-
-        // Set liftPower variable
-        if(getLiftPosition() < destination - liftDeadZone_Lower){
-            //go up
-            //liftMotor.setPower(liftUpSpeed);
-            goToPositionEnabled = true;
-            liftPower = liftUpSpeed;
-            telemetry.addData("Lift: Going to position: ",destination);
-        }
-        else{
-            if(getLiftPosition() > destination + liftDeadZone_Upper){
-                //go down
-                //liftMotor.setPower(liftDownSpeed);
-                goToPositionEnabled = true;
-                liftPower = liftDownSpeed;
-                telemetry.addData("Lift: Going to position  ",destination);
-            }
-            else{
-                liftPower = 0;
-            //    stopLift();
-                telemetry.addData("Lift: ", "Stopped");
-            }
-        }
-
-        //Drive lift
-        if(goToPositionEnabled){
-            liftMotor.setPower(liftPower);
-
-            if(liftPower == 0){     //Probably not the cleanest way to do this, but it should work...
-                goToPositionEnabled = false;
-            }
-        }
-
-
-    }
-
-
 
 }
